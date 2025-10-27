@@ -4,7 +4,31 @@ document.addEventListener("DOMContentLoaded", () => {
   const signupForm = document.getElementById("signup-form");
   const messageDiv = document.getElementById("message");
 
-  // Function to fetch activities from API
+  // Delete participant handler
+  activitiesList.addEventListener("click", async (e) => {
+    if (e.target.classList.contains("delete-icon")) {
+      const li = e.target.closest("li.participant-item");
+      const activity = li.getAttribute("data-activity");
+      const email = li.getAttribute("data-email");
+      if (confirm(`Remove ${email} from ${activity}?`)) {
+        try {
+          const response = await fetch(`/activities/${encodeURIComponent(activity)}/unregister`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ email })
+          });
+          if (!response.ok) {
+            const error = await response.json();
+            alert(error.detail || "Failed to remove participant.");
+          } else {
+            fetchActivities();
+          }
+        } catch (err) {
+          alert("Error removing participant.");
+        }
+      }
+    }
+  });
   async function fetchActivities() {
     try {
       const response = await fetch("/activities");
@@ -23,14 +47,14 @@ document.addEventListener("DOMContentLoaded", () => {
         // Build participants list HTML
         let participantsHTML = "";
         if (details.participants.length > 0) {
-          participantsHTML = `
-            <div class="participants-section">
-              <strong>Participants:</strong>
-              <ul class="participants-list">
-                ${details.participants.map(email => `<li>${email}</li>`).join("")}
-              </ul>
-            </div>
-          `;
+            participantsHTML = `
+              <div class="participants-section">
+                <strong>Participants:</strong>
+                <ul class="participants-list">
+                  ${details.participants.map(email => `<li class="participant-item" data-activity="${name}" data-email="${email}">${email} <span class="delete-icon" title="Remove">&#128465;</span></li>`).join("")}
+                </ul>
+              </div>
+            `;
         } else {
           participantsHTML = `
             <div class="participants-section">
@@ -80,9 +104,10 @@ document.addEventListener("DOMContentLoaded", () => {
       const result = await response.json();
 
       if (response.ok) {
-        messageDiv.textContent = result.message;
-        messageDiv.className = "success";
-        signupForm.reset();
+  messageDiv.textContent = result.message;
+  messageDiv.className = "success";
+  signupForm.reset();
+  fetchActivities();
       } else {
         messageDiv.textContent = result.detail || "An error occurred";
         messageDiv.className = "error";
